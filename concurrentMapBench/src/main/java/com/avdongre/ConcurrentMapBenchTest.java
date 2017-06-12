@@ -110,7 +110,6 @@ public class ConcurrentMapBenchTest {
     }
   }
 
-
   @Benchmark
   public static void testIterateValues(Blackhole blackhole) {
     for (Object v : MAP.values()) {
