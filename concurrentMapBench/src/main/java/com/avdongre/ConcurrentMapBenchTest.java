@@ -31,6 +31,7 @@
 
 package com.avdongre;
 
+import com.avdongre.skiptree.ConcurrentSkipTreeMap;
 import com.avdongre.snaptree.SnapTreeMap;
 import com.avdongre.utils.Bytes;
 import it.unimi.dsi.fastutil.objects.Object2ObjectAVLTreeMap;
@@ -55,7 +56,8 @@ public class ConcurrentMapBenchTest {
   @Param({
       "ConcurrentSkipListMap",
       "SnapTreeMap",
-      "Object2ObjectSortedMaps"
+      "Object2ObjectSortedMaps",
+      "ConcurrentSkipTreeMap"
   })
   static String mapClassName;
   @Param({"10000"})
@@ -70,8 +72,10 @@ public class ConcurrentMapBenchTest {
   static public void setup() throws InstantiationException, IllegalAccessException, ClassNotFoundException {
     if (mapClassName.equals("Object2ObjectSortedMaps")) {
       MAP = Object2ObjectSortedMaps.synchronize(new Object2ObjectAVLTreeMap<>(Bytes.BYTES_COMPARATOR));
-    } else if ( mapClassName.equals("SnapTreeMap")) {
+    } else if (mapClassName.equals("SnapTreeMap")) {
       MAP = new SnapTreeMap<>(Bytes.BYTES_COMPARATOR);
+    } else if (mapClassName.equals("ConcurrentSkipTreeMap")) {
+      MAP = new ConcurrentSkipTreeMap<>(Bytes.BYTES_COMPARATOR);
     } else {
       MAP = new ConcurrentSkipListMap<>(Bytes.BYTES_COMPARATOR);
     }
@@ -88,40 +92,30 @@ public class ConcurrentMapBenchTest {
   }
 
   @Benchmark
-  @Threads(10)
   public static void testGet(Blackhole blackhole) {
     KEYS.stream().forEach(k -> blackhole.consume(MAP.get(k)));
   }
 
   @Benchmark
-  @Threads(10)
-  public static long testIterateKeySet(Blackhole blackhole) {
-    long sum = 0;
+  public static void testIterateKeySet(Blackhole blackhole) {
     for (byte[] k : MAP.keySet()) {
       blackhole.consume(k);
     }
-    return sum;
   }
 
   @Benchmark
-  @Threads(10)
-  public static long testIterateEntrySet(Blackhole blackhole) {
-    long sum = 0;
+  public static void testIterateEntrySet(Blackhole blackhole) {
     for (Map.Entry<byte[], Object> e : MAP.entrySet()) {
       blackhole.consume(e.getKey());
     }
-    return sum;
   }
 
 
   @Benchmark
-  @Threads(10)
-  public static long testIterateValues(Blackhole blackhole) {
-    long sum = 0;
+  public static void testIterateValues(Blackhole blackhole) {
     for (Object v : MAP.values()) {
       blackhole.consume(v);
     }
-    return sum;
   }
 }
 
