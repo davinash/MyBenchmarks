@@ -31,103 +31,98 @@
 
 package com.avdongre;
 
+import com.avdongre.snaptree.SnapTreeMap;
+import com.avdongre.utils.Bytes;
 import it.unimi.dsi.fastutil.objects.Object2ObjectAVLTreeMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectSortedMaps;
 import org.openjdk.jmh.annotations.*;
+import org.openjdk.jmh.infra.Blackhole;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.SortedMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Fork(1)
-@Warmup(iterations = 2, time = 1, timeUnit = TimeUnit.SECONDS)
-@Measurement(iterations = 5, time = 1, timeUnit = TimeUnit.SECONDS)
+@Warmup(iterations = 2)
+@Measurement(iterations = 5)
 @BenchmarkMode(Mode.Throughput)
 @State(Scope.Benchmark)
 public class ConcurrentMapBenchTest {
   @Param({
-      "java.util.concurrent.ConcurrentSkipListMap",
-      "com.avdongre.snaptree.SnapTreeMap",
+      "ConcurrentSkipListMap",
+      "SnapTreeMap",
       "Object2ObjectSortedMaps"
   })
   static String mapClassName;
-  @Param({"10000000"})
+  @Param({"10000"})
   static long mapSize;
-  static SortedMap<Long, Long> map;
+  static SortedMap<byte[], Object> MAP;
+
+  public static List<byte[]> KEYS;
+  public static final Object VAL = new Object();
+
 
   @Setup(Level.Trial)
   static public void setup() throws InstantiationException, IllegalAccessException, ClassNotFoundException {
     if (mapClassName.equals("Object2ObjectSortedMaps")) {
-      map = Object2ObjectSortedMaps.synchronize(new Object2ObjectAVLTreeMap<>());
+      MAP = Object2ObjectSortedMaps.synchronize(new Object2ObjectAVLTreeMap<>(Bytes.BYTES_COMPARATOR));
+    } else if ( mapClassName.equals("SnapTreeMap")) {
+      MAP = new SnapTreeMap<>(Bytes.BYTES_COMPARATOR);
     } else {
-      Class<SortedMap<Long, Long>> mapClass =
-          (Class<SortedMap<Long, Long>>) Class.forName(mapClassName);
-      map = mapClass.newInstance();
+      MAP = new ConcurrentSkipListMap<>(Bytes.BYTES_COMPARATOR);
     }
-    Random random = new Random(System.nanoTime());
-    System.gc();
-    // Load up the Map
-    for (long i = 0; i < mapSize; i++) {
-      long v = random.nextLong();
-      map.put(v, v);
-    }
-    System.gc();
-  }
 
-  // Randomize between invocations
-  @State(Scope.Thread)
-  public static class LocalRandom {
     Random random = new Random(System.nanoTime());
-  }
 
-//  // We have to do the removes too, to keep the Map the same size.
-//  @Benchmark
-//  public static long testPutAndRemove(LocalRandom localRandom) {
-//    long k = localRandom.random.nextLong();
-//    map.put(k, k);
-//    map.remove(k);
-//    return k;
-//  }
+    KEYS = Stream.generate(() -> {
+      byte[] key = new byte[16];
+      random.nextBytes(key);
+      return key;
+    }).limit(mapSize).collect(Collectors.toList());
+
+    KEYS.stream().forEach(k -> MAP.put(k, VAL));
+  }
 
   @Benchmark
   @Threads(10)
-  public static long testGet(LocalRandom localRandom) {
-    long k = localRandom.random.nextLong();
-    // v is almost always null. This biases hashmaps measurements
-    Long v = map.get(k);
-    if (v != null)
-      System.out.println("v != null");
-    return v == null ? 0 : v.longValue();
+  public static void testGet(Blackhole blackhole) {
+    KEYS.stream().forEach(k -> blackhole.consume(MAP.get(k)));
   }
 
-//  @Benchmark
-//  public static long testIterateKeySet() {
-//    long sum = 0;
-//    for (Long k : map.keySet()) {
-//      sum += k.longValue();
-//    }
-//    return sum;
-//  }
-//
-//  @Benchmark
-//  public static long testIterateEntrySet() {
-//    long sum = 0;
-//    for (Map.Entry<Long, Long> e : map.entrySet()) {
-//      sum += e.getKey().longValue();
-//    }
-//    return sum;
-//  }
-//
-//  @Benchmark
-//  public static long testIterateValues() {
-//    long sum = 0;
-//    for (Long v : map.values()) {
-//      sum += v.longValue();
-//    }
-//    return sum;
-//  }
+  @Benchmark
+  @Threads(10)
+  public static long testIterateKeySet(Blackhole blackhole) {
+    long sum = 0;
+    for (byte[] k : MAP.keySet()) {
+      blackhole.consume(k);
+    }
+    return sum;
+  }
+
+  @Benchmark
+  @Threads(10)
+  public static long testIterateEntrySet(Blackhole blackhole) {
+    long sum = 0;
+    for (Map.Entry<byte[], Object> e : MAP.entrySet()) {
+      blackhole.consume(e.getKey());
+    }
+    return sum;
+  }
+
+
+  @Benchmark
+  @Threads(10)
+  public static long testIterateValues(Blackhole blackhole) {
+    long sum = 0;
+    for (Object v : MAP.values()) {
+      blackhole.consume(v);
+    }
+    return sum;
+  }
 }
 
 
