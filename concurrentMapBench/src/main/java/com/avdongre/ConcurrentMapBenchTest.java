@@ -39,10 +39,7 @@ import it.unimi.dsi.fastutil.objects.Object2ObjectSortedMaps;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.infra.Blackhole;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
-import java.util.SortedMap;
+import java.util.*;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -56,8 +53,7 @@ public class ConcurrentMapBenchTest {
   @Param({
       "ConcurrentSkipListMap",
       "SnapTreeMap",
-      "Object2ObjectSortedMaps",
-      "ConcurrentSkipTreeMap"
+      "Object2ObjectSortedMaps"
   })
   static String mapClassName;
   @Param({"10000"})
@@ -67,6 +63,30 @@ public class ConcurrentMapBenchTest {
   public static List<byte[]> KEYS;
   public static final Object VAL = new Object();
 
+
+//  public static void main(String[] args) {
+//    MAP = new SnapTreeMap<>(Bytes.BYTES_COMPARATOR);
+//    Random random = new Random(System.nanoTime());
+//
+//    KEYS = Stream.generate(() -> {
+//      byte[] key = new byte[16];
+//      random.nextBytes(key);
+//      return key;
+//    }).limit(10).collect(Collectors.toList());
+//
+//    KEYS.stream().forEach(k -> MAP.put(k, VAL));
+//
+//    Object o = MAP.get(KEYS.get(0));
+//
+//    MAP.entrySet().iterator().next();
+//
+//  }
+
+  @Setup(Level.Iteration)
+  static public void shuffleInputKeys() {
+    System.out.println("shuffleInputKeys called");
+    Collections.shuffle(KEYS);
+  }
 
   @Setup(Level.Trial)
   static public void setup() throws InstantiationException, IllegalAccessException, ClassNotFoundException {
