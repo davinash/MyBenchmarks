@@ -33,71 +33,57 @@ package com.avdongre;
 
 import com.avdongre.skiptree.ConcurrentSkipTreeMap;
 import com.avdongre.snaptree.SnapTreeMap;
-import com.avdongre.utils.Bytes;
 import it.unimi.dsi.fastutil.objects.Object2ObjectAVLTreeMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectSortedMaps;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.infra.Blackhole;
 
-import java.util.*;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Fork(1)
-@Warmup(iterations = 2)
-@Measurement(iterations = 5)
+@Warmup(iterations = 10)
+@Measurement(iterations = 50)
 @BenchmarkMode(Mode.Throughput)
 @State(Scope.Benchmark)
 public class ConcurrentMapBenchTest {
   @Param({
       "ConcurrentSkipListMap",
       "SnapTreeMap",
-      "Object2ObjectSortedMaps"
+      "FastUtilsAVLTree",
+      "ConcurrentHashMap"
   })
   static String mapClassName;
   @Param({"10000"})
   static long mapSize;
-  static SortedMap<byte[], Object> MAP;
+  static Map<ByteArrayKey, Object> MAP;
 
-  public static List<byte[]> KEYS;
+  public static List<ByteArrayKey> KEYS;
   public static final Object VAL = new Object();
-
-
-//  public static void main(String[] args) {
-//    MAP = new SnapTreeMap<>(Bytes.BYTES_COMPARATOR);
-//    Random random = new Random(System.nanoTime());
-//
-//    KEYS = Stream.generate(() -> {
-//      byte[] key = new byte[16];
-//      random.nextBytes(key);
-//      return key;
-//    }).limit(10).collect(Collectors.toList());
-//
-//    KEYS.stream().forEach(k -> MAP.put(k, VAL));
-//
-//    Object o = MAP.get(KEYS.get(0));
-//
-//    MAP.entrySet().iterator().next();
-//
-//  }
 
   @Setup(Level.Iteration)
   static public void shuffleInputKeys() {
-    System.out.println("shuffleInputKeys called");
     Collections.shuffle(KEYS);
   }
 
   @Setup(Level.Trial)
   static public void setup() throws InstantiationException, IllegalAccessException, ClassNotFoundException {
-    if (mapClassName.equals("Object2ObjectSortedMaps")) {
-      MAP = Object2ObjectSortedMaps.synchronize(new Object2ObjectAVLTreeMap<>(Bytes.BYTES_COMPARATOR));
+    if (mapClassName.equals("FastUtilsAVLTree")) {
+      MAP = Object2ObjectSortedMaps.synchronize(new Object2ObjectAVLTreeMap<>());
     } else if (mapClassName.equals("SnapTreeMap")) {
-      MAP = new SnapTreeMap<>(Bytes.BYTES_COMPARATOR);
+      MAP = new SnapTreeMap<>();
     } else if (mapClassName.equals("ConcurrentSkipTreeMap")) {
-      MAP = new ConcurrentSkipTreeMap<>(Bytes.BYTES_COMPARATOR);
+      MAP = new ConcurrentSkipTreeMap<>();
+    } else if (mapClassName.equals("ConcurrentHashMap")) {
+      MAP = new ConcurrentHashMap();
     } else {
-      MAP = new ConcurrentSkipListMap<>(Bytes.BYTES_COMPARATOR);
+      MAP = new ConcurrentSkipListMap<>();
     }
 
     Random random = new Random(System.nanoTime());
@@ -105,7 +91,7 @@ public class ConcurrentMapBenchTest {
     KEYS = Stream.generate(() -> {
       byte[] key = new byte[16];
       random.nextBytes(key);
-      return key;
+      return new ByteArrayKey(key);
     }).limit(mapSize).collect(Collectors.toList());
 
     KEYS.stream().forEach(k -> MAP.put(k, VAL));
@@ -116,26 +102,26 @@ public class ConcurrentMapBenchTest {
     KEYS.stream().forEach(k -> blackhole.consume(MAP.get(k)));
   }
 
-  @Benchmark
-  public static void testIterateKeySet(Blackhole blackhole) {
-    for (byte[] k : MAP.keySet()) {
-      blackhole.consume(k);
-    }
-  }
-
-  @Benchmark
-  public static void testIterateEntrySet(Blackhole blackhole) {
-    for (Map.Entry<byte[], Object> e : MAP.entrySet()) {
-      blackhole.consume(e.getKey());
-    }
-  }
-
-  @Benchmark
-  public static void testIterateValues(Blackhole blackhole) {
-    for (Object v : MAP.values()) {
-      blackhole.consume(v);
-    }
-  }
+//  @Benchmark
+//  public static void testIterateKeySet(Blackhole blackhole) {
+//    for (ByteArrayKey k : MAP.keySet()) {
+//      blackhole.consume(k);
+//    }
+//  }
+//
+//  @Benchmark
+//  public static void testIterateEntrySet(Blackhole blackhole) {
+//    for (Map.Entry<ByteArrayKey, Object> e : MAP.entrySet()) {
+//      blackhole.consume(e.getKey());
+//    }
+//  }
+//
+//  @Benchmark
+//  public static void testIterateValues(Blackhole blackhole) {
+//    for (Object v : MAP.values()) {
+//      blackhole.consume(v);
+//    }
+//  }
 }
 
 
