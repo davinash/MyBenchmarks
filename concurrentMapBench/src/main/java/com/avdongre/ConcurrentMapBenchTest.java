@@ -56,72 +56,83 @@ public class ConcurrentMapBenchTest {
   @Param({
       "ConcurrentSkipListMap",
       "SnapTreeMap",
-      "FastUtilsAVLTree",
-      "ConcurrentHashMap"
+      "Object2ObjectAVLTreeMap-Synchronized",
+      "TreeMap",
+      "skiptree"
   })
   static String mapClassName;
-  @Param({"10000"})
-  static long mapSize;
-  static Map<ByteArrayKey, Object> MAP;
+  @Param({"1000000"})
+  static int mapSize;
+  static Map<ByteArrayKey, Object> mapInstance;
 
-  public static List<ByteArrayKey> KEYS;
+  public static List<ByteArrayKey> keys;
   public static final Object VAL = new Object();
 
   @Setup(Level.Iteration)
   static public void shuffleInputKeys() {
-    Collections.shuffle(KEYS);
+    Collections.shuffle(keys);
   }
 
   @Setup(Level.Trial)
   static public void setup() throws InstantiationException, IllegalAccessException, ClassNotFoundException {
-    if (mapClassName.equals("FastUtilsAVLTree")) {
-      MAP = Object2ObjectSortedMaps.synchronize(new Object2ObjectAVLTreeMap<>());
+    if (mapClassName.equals("Object2ObjectAVLTreeMap-Synchronized")) {
+      mapInstance = Object2ObjectSortedMaps.synchronize(new Object2ObjectAVLTreeMap<>());
     } else if (mapClassName.equals("SnapTreeMap")) {
-      MAP = new SnapTreeMap<>();
+      mapInstance = new SnapTreeMap<>();
     } else if (mapClassName.equals("ConcurrentSkipTreeMap")) {
-      MAP = new ConcurrentSkipTreeMap<>();
+      mapInstance = new ConcurrentSkipTreeMap<>();
     } else if (mapClassName.equals("ConcurrentHashMap")) {
-      MAP = new ConcurrentHashMap();
+      mapInstance = new ConcurrentHashMap();
+    } else if ( mapClassName.equals("skiptree")) {
+      mapInstance = new ConcurrentSkipTreeMap<>();
     } else {
-      MAP = new ConcurrentSkipListMap<>();
+      mapInstance = new ConcurrentSkipListMap<>();
     }
 
     Random random = new Random(System.nanoTime());
 
-    KEYS = Stream.generate(() -> {
+    keys = Stream.generate(() -> {
       byte[] key = new byte[16];
       random.nextBytes(key);
       return new ByteArrayKey(key);
     }).limit(mapSize).collect(Collectors.toList());
 
-    KEYS.stream().forEach(k -> MAP.put(k, VAL));
+    keys.stream().forEach(k -> mapInstance.put(k, VAL));
+  }
+
+  // Randomize between invocations
+  @State(Scope.Thread)
+  public static class LocalRandom {
+    Random random = new Random(System.nanoTime());
+  }
+
+
+  @Benchmark
+  public static Object testGet(LocalRandom localRandom) {
+    int k = localRandom.random.nextInt(mapSize);
+    return mapInstance.get(keys.get(k));
   }
 
   @Benchmark
-  public static void testGet(Blackhole blackhole) {
-    KEYS.stream().forEach(k -> blackhole.consume(MAP.get(k)));
+  public static void testIterateKeySet(Blackhole blackhole) {
+    for (ByteArrayKey k : mapInstance.keySet()) {
+      blackhole.consume(k);
+    }
   }
 
-//  @Benchmark
-//  public static void testIterateKeySet(Blackhole blackhole) {
-//    for (ByteArrayKey k : MAP.keySet()) {
-//      blackhole.consume(k);
-//    }
-//  }
-//
-//  @Benchmark
-//  public static void testIterateEntrySet(Blackhole blackhole) {
-//    for (Map.Entry<ByteArrayKey, Object> e : MAP.entrySet()) {
-//      blackhole.consume(e.getKey());
-//    }
-//  }
-//
-//  @Benchmark
-//  public static void testIterateValues(Blackhole blackhole) {
-//    for (Object v : MAP.values()) {
-//      blackhole.consume(v);
-//    }
-//  }
+  @Benchmark
+  public static void testIterateEntrySet(Blackhole blackhole) {
+    for (Map.Entry<ByteArrayKey, Object> e : mapInstance.entrySet()) {
+      blackhole.consume(e.getKey());
+    }
+  }
+
+  @Benchmark
+  public static void testIterateValues(Blackhole blackhole) {
+    for (Object v : mapInstance.values()) {
+      blackhole.consume(v);
+    }
+  }
 }
 
 
