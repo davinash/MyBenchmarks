@@ -15,25 +15,25 @@ All the maps are benchmarked against following.
 Map is populated in the `setup` method of the `jmh`. Map is populated with 1M keys.
 Each key is 16 bytes long. Key is wrapped into Object of class `ByteArrayKey`
 
-####Machine Configuration
+#### Machine Configuration
 Desktop-class Machine
 Intel(R) Core(TM) i7-5500U CPU @ 2.40GHz (4 core) 16 GB Ubuntu 16.04.2 LTS.
 
-####Purpose
+#### Purpose
 Observe the behavior for pure get and scan operations under different number of threads.
 
-####How to Run 
-#####Building
+#### How to Run 
+##### Building
 ```bash
 mvn clean install
 ```
-#####Running the Benchmark
+##### Running the Benchmark
 ```bash
 java -cp target/benchmarks.jar:<FAST_UTILS_HOME>fastutil-7.0.2.jar  org.openjdk.jmh.Main -t <NUM_OF_THREADS> -wi <WARMUP_ITERATION> -i <MESUREMENT_ITERATION>
 ```
 
-##Results
-#####Number Of Threads 1, 50 iterations
+## Results
+#### Number Of Threads 1, 50 iterations
 
 ```bash
 # Run complete. Total time: 00:21:35
@@ -62,7 +62,7 @@ ConcurrentMapBenchTest.testIterateValues                                skiptree
 
 ```
 
-#####Number Of Threads 2, 50 iterations
+#### Number Of Threads 2, 50 iterations
 
 ```bash
 # Run complete. Total time: 00:22:35
@@ -91,7 +91,7 @@ ConcurrentMapBenchTest.testIterateValues                                skiptree
 
 ```
 
-#####Number Of Threads 4, 50 iterations
+#### Number Of Threads 4, 50 iterations
 
 ```bash
 # Run complete. Total time: 00:23:02
