@@ -31,14 +31,62 @@
 
 package io.davinash;
 
+import org.apache.geode.cache.Region;
+import org.apache.geode.cache.client.ClientCache;
+import org.apache.geode.cache.client.ClientCacheFactory;
+import org.apache.geode.cache.client.ClientRegionShortcut;
+import org.apache.geode.distributed.internal.DistributionConfig;
+import org.apache.geode.pdx.PdxInstance;
+import org.apache.geode.pdx.PdxInstanceFactory;
+import org.apache.geode.pdx.internal.PdxInstanceFactoryImpl;
 import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.annotations.BenchmarkMode;
+import org.openjdk.jmh.annotations.Fork;
+import org.openjdk.jmh.annotations.Level;
+import org.openjdk.jmh.annotations.Mode;
+import org.openjdk.jmh.annotations.Param;
+import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.annotations.Setup;
+import org.openjdk.jmh.annotations.State;
+import org.openjdk.jmh.infra.Blackhole;
 
+import java.util.concurrent.ThreadLocalRandom;
+
+@Fork(value = 10)
+@BenchmarkMode(Mode.Throughput)
+@State(Scope.Benchmark)
 public class GeodeGetBenchmark {
 
-    @Benchmark
-    public void testMethod() {
-        // This is a demo/sample template for building your JMH benchmarks. Edit as needed.
-        // Put your benchmark code here.
+  static Region region = null;
+  @Param({"1", "10", "100", "1000", "10000", "100000", "1000000", "10000000"})
+  static long numOfKeys;
+
+  @Setup(Level.Trial)
+  static public void setup() {
+    ClientCache
+        clientCache =
+        new ClientCacheFactory().addPoolLocator("127.0.0.1", 10334)
+            .set(DistributionConfig.LOG_FILE_NAME, "system.log").create();
+    region =
+        clientCache.createClientRegionFactory(ClientRegionShortcut.PROXY).create("TEST_REGION");
+
+    for (long key = 0; key < numOfKeys; key++) {
+      PdxInstanceFactory pf = PdxInstanceFactoryImpl.newCreator("GeodePut", false);
+      for (int colIdx = 0; colIdx < 10; colIdx++) {
+        pf.writeByteArray("Field-" + colIdx, new byte[20]);
+      }
+      region.put(key, pf.create());
     }
+  }
+
+  @Benchmark
+  public void benchmarkClientServerGet(Blackhole blackhole) {
+    long key = ThreadLocalRandom.current().nextLong(numOfKeys);
+    PdxInstance value = (PdxInstance) region.get(key);
+    if (value == null) {
+      System.out.println("Did not get the value for key --> " + key);
+    }
+    blackhole.consume(value);
+  }
 
 }
