@@ -12,6 +12,7 @@ build/
 .idea/
 build-eclipse/
 /tags
+target/
 
 
 
