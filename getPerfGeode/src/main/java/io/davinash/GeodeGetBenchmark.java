@@ -33,7 +33,7 @@ package io.davinash;
 
 import org.openjdk.jmh.annotations.Benchmark;
 
-public class MyBenchmark {
+public class GeodeGetBenchmark {
 
     @Benchmark
     public void testMethod() {
